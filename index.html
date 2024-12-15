@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Topic Search</title>
+  <link rel="stylesheet" href="script.css">
+  </head>
+<body>
+  <div class="container">
+    <h1>Topic Search</h1>
+    <input type="text" id="searchInput" placeholder="Enter a topic..." />
+    <button id="searchButton">Search</button>
+
+    <div id="results" class="results">
+      <h2>Results</h2>
+      <div id="info"></div>
+      <div id="images" class="images"></div>
+    </div>
+  </div>
+
+  <script>
+    // Function to search for a topic
+async function searchTopic(topic) {
+    try {
+        const response = await fetch(`/search?topic=${encodeURIComponent(topic)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch data');
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error in searchTopic:', error);
+        throw error;
+    }
+}
+
+// Function to display results
+function displayResults(data) {
+    try {
+        const infoDiv = document.getElementById("info");
+        const imagesDiv = document.getElementById("images");
+
+        if (!infoDiv || !imagesDiv) {
+            throw new Error('Required DOM elements not found');
+        }
+
+        // Clear previous results
+        infoDiv.innerHTML = "";
+        imagesDiv.innerHTML = "";
+
+        // Display text information
+        if (data.text) {
+            infoDiv.textContent = data.text;
+        }
+
+        // Display images
+        if (Array.isArray(data.images)) {
+            data.images.forEach((url) => {
+                const img = document.createElement("img");
+                img.src = url;
+                img.alt = "Search result image"; // Adding alt for accessibility
+                img.onerror = () => {
+                    img.src = 'placeholder.jpg'; // Fallback image
+                    img.alt = 'Image failed to load';
+                };
+                imagesDiv.appendChild(img);
+            });
+        }
+    } catch (error) {
+        console.error('Error in displayResults:', error);
+        throw error;
+    }
+}
+
+// Function to handle loading state
+function setLoading(isLoading) {
+    const searchButton = document.getElementById("searchButton");
+    const searchInput = document.getElementById("searchInput");
+    
+    if (searchButton && searchInput) {
+        searchButton.disabled = isLoading;
+        searchInput.disabled = isLoading;
+        searchButton.textContent = isLoading ? "Searching..." : "Search";
+    }
+}
+
+// Event listener for the search button
+document.getElementById("searchButton")?.addEventListener("click", async () => {
+    const searchInput = document.getElementById("searchInput");
+    
+    if (!searchInput) {
+        console.error('Search input not found');
+        return;
+    }
+
+    const searchTerm = searchInput.value.trim();
+
+    if (!searchTerm) {
+        alert("Please enter a topic!");
+        return;
+    }
+
+    try {
+        setLoading(true);
+        const data = await searchTopic(searchTerm);
+        await displayResults(data);
+    } catch (error) {
+        console.error('Search error:', error);
+        alert("Failed to fetch data. Please try again.");
+    } finally {
+        setLoading(false);
+    }
+});
+
+// Add enter key support
+document.getElementById("searchInput")?.addEventListener("keypress", (event) => {
+    if (event.key === "Enter") {
+        document.getElementById("searchButton")?.click();
+    }
+});
+
+// Add simple debouncing for search
+let searchTimeout;
+document.getElementById("searchInput")?.addEventListener("input", (event) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const searchButton = document.getElementById("searchButton");
+        if (searchButton && event.target.value.trim()) {
+            searchButton.click();
+        }
+    }, 500); // Wait 500ms after user stops typing
+});
+  </script>
+</body>
+</html>
